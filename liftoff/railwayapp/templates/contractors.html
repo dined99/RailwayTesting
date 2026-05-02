@@ -1,0 +1,575 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+{# ── Filter bar ── #}
+<div id="list-filters" class="bg-white p-4 mb-6 rounded-lg shadow-md flex flex-col gap-4 items-start bg-opacity-90 search-bar">
+    <div class="flex space-x-4 w-full">
+        <input type="text" id="searchInput" placeholder="Search..." class="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-[#039ed9] w-full">
+        <button id="filters-toggle" class="filters-btn bg-[#d3e0ea] text-white px-3 py-1 rounded hover:bg-[#b0c4de]">Filters</button>
+    </div>
+
+    <div id="filters-panel" class="hidden flex flex-col gap-4 w-full mt-2">
+        <div>
+            <h4 class="text-sm font-medium text-gray-700 mb-1">Date Entered</h4>
+            <select id="dateEnteredType" class="border rounded p-1">
+                <option value="before">Before</option>
+                <option value="after">After</option>
+            </select>
+            <input type="date" id="dateEnteredValue" class="border rounded p-1">
+        </div>
+        <div>
+            <h4 class="text-sm font-medium text-gray-700 mb-1">Date Joined</h4>
+            <select id="dateJoinedType" class="border rounded p-1">
+                <option value="before">Before</option>
+                <option value="after">After</option>
+            </select>
+            <input type="date" id="dateJoinedValue" class="border rounded p-1">
+        </div>
+        <div>
+            <h4 class="text-sm font-medium text-gray-700 mb-1">Business Name</h4>
+            <select id="businessFilter" class="border rounded p-1">
+                <option value="all">All</option>
+                {% for biz in business_names %}
+                    <option value="{{ biz|lower }}">{{ biz }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button id="clearFilters" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 text-sm inline-block w-40">Clear Filters</button>
+    </div>
+
+    <div class="flex gap-4 items-end flex-wrap">
+        <div class="flex flex-col">
+            <label class="text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select id="statusFilter" class="border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-[#039ed9]">
+                <option value="all">All</option>
+                <option value="active" selected>Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="vetted">Vetted</option>
+                <option value="initial_contact">Initial Contact</option>
+            </select>
+        </div>
+        <div class="flex flex-col relative" id="dept-dropdown-wrapper">
+            <label class="text-sm font-medium text-gray-700 mb-1">Department</label>
+            <button type="button" id="dept-dropdown-btn"
+                class="border border-gray-300 rounded p-2 bg-white text-left focus:outline-none focus:ring-2 focus:ring-[#039ed9] min-w-[180px] flex items-center justify-between gap-2">
+                <span id="dept-dropdown-label">All</span>
+                <span class="text-gray-400 text-xs">&#9660;</span>
+            </button>
+            <div id="dept-dropdown-panel"
+                class="hidden absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 min-w-[180px] max-h-56 overflow-y-auto">
+                <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" class="dept-checkbox" value="all" checked> All
+                </label>
+                {% for dept in departments %}
+                <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" class="dept-checkbox" value="{{ dept|lower }}"> {{ dept }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Section header ── #}
+<div class="staff-section">
+    <div class="flex justify-between items-center mb-4">
+        <div class="flex items-baseline gap-3">
+            <h3 class="text-xl font-semibold text-[#093d51]">Contractor Hub</h3>
+            <div class="flex gap-1">
+                <button id="tab-list" class="tab-btn px-3 py-1 rounded text-sm font-medium bg-[#093d51] text-white">List View</button>
+                <button id="tab-map" class="tab-btn px-3 py-1 rounded text-sm font-medium bg-[#d3e0ea] text-[#093d51]">Map View</button>
+            </div>
+        </div>
+        <div id="list-actions" class="flex space-x-2 items-center">
+            <div class="relative" id="col-picker-wrapper">
+                <button id="col-picker-btn" class="btn bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 transition-colors flex items-center gap-2">
+                    <i class="fas fa-columns text-sm"></i> Manage Columns
+                </button>
+                <div id="col-picker-panel" class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 min-w-[180px] py-1">
+                    <div class="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b">Toggle Columns</div>
+                    <div id="col-picker-list"></div>
+                    <div class="border-t px-3 py-2">
+                        <button id="col-picker-reset" class="text-xs text-[#039ed9] hover:underline">Reset to default</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── List view ── #}
+    <div id="list-view">
+        <div class="employee-table-container bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2">
+            <table class="employee-table">
+                <thead>
+                    <tr class="employee-table-header">
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="name">Full Name</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="email">Email</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="phone">Phone</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="department">Department</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="status">Status</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="client">Assigned Client</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="title">Task</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="business_name">Business Name</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="business_email">Business Email</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="location">Address</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="date_entered">Date Entered</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="date_joined">Date Joined</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="staff_id">Staff ID</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="rpr_manager">RPR Manager</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="contract_date">Contract Date</th>
+                        <th class="employee-table-header-cell text-left px-4 py-2" data-col="contract_status">Contract Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contractor in contractors %}
+                        <tr class="employee-table-row"
+                            data-status="{{ contractor.status }}"
+                            data-date-entered="{{ contractor.date_entered|date:'Y-m-d' }}"
+                            data-date-joined="{{ contractor.date_of_joining|date:'Y-m-d' }}"
+                            data-department="{{ contractor.rpr_department.name|default:''|lower }}"
+                            data-business="{{ contractor.contractor_business_name|default:''|lower }}">
+                            <td class="employee-table-cell" data-col="name">{{ contractor.first_name }} {{ contractor.last_name }}</td>
+                            <td class="employee-table-cell" data-col="email">{{ contractor.personal_email }}</td>
+                            <td class="employee-table-cell" data-col="phone">{{ contractor.phone_number }}</td>
+                            <td class="employee-table-cell" data-col="department">{{ contractor.rpr_department.name|default:"—" }}</td>
+                            <td class="employee-table-cell" data-col="status">
+                                <span class="employee-status {% if contractor.status == 'active' %}status-active{% elif contractor.status == 'vetted' %}status-active{% elif contractor.status == 'initial_contact' %}status-pending{% else %}status-inactive{% endif %}">
+                                    {{ contractor.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="employee-table-cell" data-col="client">
+                                {% with assignment=contractor.assignments.all|first %}
+                                    {% if assignment and assignment.project and assignment.project.client %}
+                                        {{ assignment.project.client.name }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="employee-table-cell" data-col="title">{{ contractor.title|default:"—" }}</td>
+                            <td class="employee-table-cell" data-col="business_name">{{ contractor.contractor_business_name|default:"—" }}</td>
+                            <td class="employee-table-cell" data-col="business_email">{{ contractor.business_email|default:"—" }}</td>
+                            <td class="employee-table-cell" data-col="location">{% if contractor.street %}{{ contractor.street }}, {{ contractor.city }}, {{ contractor.state }} {{ contractor.zip_code }}{% else %}—{% endif %}</td>
+                            <td class="employee-table-cell" data-col="date_entered">{{ contractor.date_entered|date:"m/d/Y" }}</td>
+                            <td class="employee-table-cell" data-col="date_joined">{{ contractor.date_of_joining|date:"m/d/Y"|default:"—" }}</td>
+                            <td class="employee-table-cell" data-col="staff_id">{{ contractor.staff_id }}</td>
+                            <td class="employee-table-cell" data-col="rpr_manager">{{ contractor.rpr_manager|default:"—" }}</td>
+                            <td class="employee-table-cell" data-col="contract_date">{{ contractor.rpr_contract_date|date:"m/d/Y"|default:"—" }}</td>
+                            <td class="employee-table-cell" data-col="contract_status">{{ contractor.get_contract_status_display|default:"—" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# ── Pagination ── #}
+        {% if contractors.has_other_pages %}
+        <div class="flex items-center justify-between mt-4 text-sm text-gray-600">
+            <span>Page {{ contractors.number }} of {{ contractors.paginator.num_pages }} &mdash; {{ contractors.paginator.count }} contractors</span>
+            <div class="flex gap-1">
+                {% if contractors.has_previous %}
+                    <a href="?page=1" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">«</a>
+                    <a href="?page={{ contractors.previous_page_number }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">‹</a>
+                {% endif %}
+                {% for num in contractors.paginator.page_range %}
+                    {% if contractors.number == num %}
+                        <span class="px-3 py-1 rounded bg-[#093d51] text-white">{{ num }}</span>
+                    {% elif num > contractors.number|add:'-3' and num < contractors.number|add:'3' %}
+                        <a href="?page={{ num }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% if contractors.has_next %}
+                    <a href="?page={{ contractors.next_page_number }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">›</a>
+                    <a href="?page={{ contractors.paginator.num_pages }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">»</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ── Map view ── #}
+    <div id="map-view" style="display:none;">
+        <div id="map-wrapper">
+            <div id="map-sidebar">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Search project area</label>
+                    <input id="map-search-input" type="text" placeholder="Enter address or location…">
+                </div>
+                <button id="map-clear" class="map-filter-btn w-full">Clear Search</button>
+                <div class="map-filter-row">
+                    <button class="map-filter-btn map-status-btn active" data-status="active">Active</button>
+                    <button class="map-filter-btn map-status-btn" data-status="inactive">Inactive</button>
+                    <button class="map-filter-btn map-status-btn" data-status="all">All</button>
+                </div>
+                <div id="map-result-count">Loading contractors…</div>
+                <div id="map-contractor-list"></div>
+            </div>
+            <div id="map-container">
+                <div id="map"></div>
+                <button id="map-reset-btn" title="Reset to US view">&#8635; Reset View</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+  #map-wrapper { display: flex; gap: 1rem; height: calc(100vh - 14rem); }
+  #map-sidebar { width: 300px; min-width: 260px; display: flex; flex-direction: column; gap: .75rem; overflow: hidden; }
+  #map-container { flex: 1; position: relative; }
+  #map { height: 100%; border-radius: .5rem; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  #map-reset-btn {
+    position: absolute; bottom: 1rem; right: .75rem; z-index: 5;
+    background: white; border: none; border-radius: .375rem;
+    padding: .4rem .75rem; font-size: .8rem; font-weight: 600; color: #093d51;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25); cursor: pointer;
+  }
+  #map-reset-btn:hover { background: #f0f4f8; }
+  #map-contractor-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: .5rem; }
+  .map-contractor-card {
+    background: white; border-radius: .5rem; padding: .6rem .75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.1); cursor: pointer;
+    border-left: 4px solid #b0c4de;
+  }
+  .map-contractor-card:hover { border-color: #039ed9; }
+  .map-contractor-card.active-status, .map-contractor-card.vetted-status { border-left-color: #6aa84f; }
+  .map-contractor-card.inactive-status { border-left-color: #aaa; }
+  .map-contractor-card .c-name { font-weight: 600; font-size: .9rem; color: #093d51; }
+  .map-contractor-card .c-meta { font-size: .75rem; color: #555; margin-top: 2px; }
+  .map-contractor-card .c-dist { font-size: .75rem; font-weight: 600; color: #039ed9; float: right; }
+  #map-search-input {
+    width: 100%; padding: .5rem .75rem; border: 1px solid #d1d5db;
+    border-radius: .5rem; font-size: .875rem; box-sizing: border-box;
+  }
+  #map-search-input:focus { outline: none; border-color: #039ed9; }
+  .map-filter-row { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .map-filter-btn {
+    padding: .3rem .7rem; border-radius: .375rem; font-size: .75rem; font-weight: 500;
+    background: #d3e0ea; color: #093d51; border: none; cursor: pointer;
+  }
+  .map-filter-btn.active { background: #039ed9; color: white; }
+  #map-result-count { font-size: .75rem; color: #666; }
+  .map-no-results { text-align: center; color: #888; font-size: .85rem; padding: 1rem; }
+</style>
+
+<script>
+// ── Filters ──────────────────────────────────────────────────────────
+document.getElementById('filters-toggle').addEventListener('click', () => {
+    document.getElementById('filters-panel').classList.toggle('hidden');
+});
+document.getElementById('clearFilters').addEventListener('click', () => {
+    document.getElementById('dateEnteredValue').value = '';
+    document.getElementById('dateJoinedValue').value = '';
+    document.getElementById('businessFilter').value = 'all';
+    document.getElementById('statusFilter').value = 'active';
+    document.querySelectorAll('.dept-checkbox').forEach(cb => cb.checked = false);
+    document.querySelector('.dept-checkbox[value="all"]').checked = true;
+    updateDeptLabel();
+    filterTable();
+});
+
+function getSelectedDepts() {
+    const checked = Array.from(document.querySelectorAll('.dept-checkbox:checked')).map(cb => cb.value);
+    return checked.length === 0 ? ['all'] : checked;
+}
+function updateDeptLabel() {
+    const selected = getSelectedDepts();
+    const btn = document.getElementById('dept-dropdown-label');
+    if (selected.includes('all') || selected.length === 0) { btn.textContent = 'All'; return; }
+    btn.textContent = selected.length === 1
+        ? document.querySelector(`.dept-checkbox[value="${selected[0]}"]`).closest('label').textContent.trim()
+        : `${selected.length} selected`;
+}
+function filterTable(searchTerm = '') {
+    const rows = document.querySelectorAll('.employee-table-row');
+    const statusFilter = document.getElementById('statusFilter').value;
+    const selectedDepts = getSelectedDepts();
+    const deptIsAll = selectedDepts.includes('all');
+    const dateEnteredType = document.getElementById('dateEnteredType').value;
+    const dateEnteredValue = document.getElementById('dateEnteredValue').value;
+    const dateJoinedType = document.getElementById('dateJoinedType').value;
+    const dateJoinedValue = document.getElementById('dateJoinedValue').value;
+    const bizFilter = document.getElementById('businessFilter').value;
+    rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        const dateEntered = row.getAttribute('data-date-entered');
+        const dateJoined = row.getAttribute('data-date-joined');
+        const dept = row.getAttribute('data-department');
+        const biz = row.getAttribute('data-business');
+        const nameEmail = row.cells[0].textContent.toLowerCase() + row.cells[1].textContent.toLowerCase() + row.cells[2].textContent.toLowerCase();
+        const statusMatch = statusFilter === 'all' || status === statusFilter;
+        const deptMatch = deptIsAll || selectedDepts.some(s => dept === s);
+        const searchMatch = !searchTerm || nameEmail.includes(searchTerm);
+        let dateEnteredMatch = true;
+        if (dateEnteredValue) dateEnteredMatch = dateEnteredType === 'before' ? dateEntered <= dateEnteredValue : dateEntered >= dateEnteredValue;
+        let dateJoinedMatch = true;
+        if (dateJoinedValue) dateJoinedMatch = dateJoinedType === 'before' ? dateJoined <= dateJoinedValue : dateJoined >= dateJoinedValue;
+        const bizMatch = bizFilter === 'all' || biz === bizFilter;
+        row.style.display = (statusMatch && deptMatch && searchMatch && dateEnteredMatch && dateJoinedMatch && bizMatch) ? '' : 'none';
+    });
+}
+
+document.getElementById('searchInput').addEventListener('input', e => filterTable(e.target.value.toLowerCase()));
+['dateEnteredType','dateEnteredValue','dateJoinedType','dateJoinedValue','businessFilter','statusFilter'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => filterTable(document.getElementById('searchInput').value.toLowerCase()));
+});
+document.getElementById('dept-dropdown-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('dept-dropdown-panel').classList.toggle('hidden');
+});
+document.addEventListener('click', e => {
+    if (!document.getElementById('dept-dropdown-wrapper').contains(e.target))
+        document.getElementById('dept-dropdown-panel').classList.add('hidden');
+});
+document.querySelectorAll('.dept-checkbox').forEach(cb => {
+    cb.addEventListener('change', function() {
+        const allCb = document.querySelector('.dept-checkbox[value="all"]');
+        if (this.value === 'all') {
+            if (this.checked) document.querySelectorAll('.dept-checkbox').forEach(c => { if (c !== this) c.checked = false; });
+            else this.checked = true;
+        } else {
+            if (this.checked) allCb.checked = false;
+            if (!Array.from(document.querySelectorAll('.dept-checkbox:not([value="all"])')).some(c => c.checked)) allCb.checked = true;
+        }
+        updateDeptLabel();
+        filterTable(document.getElementById('searchInput').value.toLowerCase());
+    });
+});
+filterTable();
+
+// ── Column picker ─────────────────────────────────────────────────────
+const COL_STORAGE_KEY = 'contractorHubColumns';
+const COL_ORDER_KEY   = 'contractorHubColOrder';
+const ALWAYS_VISIBLE  = new Set(['name']);
+const ALL_COLS = [
+    { key: 'email',           label: 'Email' },
+    { key: 'phone',           label: 'Phone' },
+    { key: 'department',      label: 'Department' },
+    { key: 'status',          label: 'Status' },
+    { key: 'client',          label: 'Assigned Client' },
+    { key: 'title',           label: 'Task' },
+    { key: 'business_name',   label: 'Business Name' },
+    { key: 'business_email',  label: 'Business Email' },
+    { key: 'location',        label: 'Address' },
+    { key: 'date_entered',    label: 'Date Entered' },
+    { key: 'date_joined',     label: 'Date Joined' },
+    { key: 'staff_id',        label: 'Staff ID' },
+    { key: 'rpr_manager',     label: 'RPR Manager' },
+    { key: 'contract_date',   label: 'Contract Date' },
+    { key: 'contract_status', label: 'Contract Status' },
+];
+const DEFAULT_VISIBLE = new Set(['email', 'phone', 'department', 'status', 'client']);
+const DEFAULT_ORDER   = ['name', ...ALL_COLS.map(c => c.key)];
+
+function loadVisibleCols() { try { const s = localStorage.getItem(COL_STORAGE_KEY); return s ? new Set(JSON.parse(s)) : new Set(DEFAULT_VISIBLE); } catch { return new Set(DEFAULT_VISIBLE); } }
+function saveVisibleCols(cols) { localStorage.setItem(COL_STORAGE_KEY, JSON.stringify([...cols])); }
+function loadColOrder() { try { const s = localStorage.getItem(COL_ORDER_KEY); return s ? JSON.parse(s) : [...DEFAULT_ORDER]; } catch { return [...DEFAULT_ORDER]; } }
+function saveColOrder(order) { localStorage.setItem(COL_ORDER_KEY, JSON.stringify(order)); }
+
+function applyColumns(visibleCols) {
+    ALL_COLS.forEach(({ key }) => {
+        const show = ALWAYS_VISIBLE.has(key) || visibleCols.has(key);
+        document.querySelectorAll(`[data-col="${key}"]`).forEach(el => el.style.display = show ? '' : 'none');
+    });
+}
+function applyColOrder(order) {
+    if (!order || !order.length) return;
+    const headerRow = document.querySelector('.employee-table-header');
+    const allRows   = document.querySelectorAll('.employee-table-row');
+    order.forEach(key => {
+        const th = headerRow.querySelector(`[data-col="${key}"]`);
+        if (th) headerRow.appendChild(th);
+        allRows.forEach(row => { const td = row.querySelector(`[data-col="${key}"]`); if (td) row.appendChild(td); });
+    });
+}
+function buildColPickerUI(visibleCols, colOrder) {
+    const list = document.getElementById('col-picker-list');
+    const orderedKeys = colOrder.filter(k => !ALWAYS_VISIBLE.has(k));
+    ALL_COLS.forEach(({ key }) => { if (!orderedKeys.includes(key)) orderedKeys.push(key); });
+    const fixedRow = label => `<div class="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 select-none"><span class="drag-handle text-gray-200">⠿</span><span>${label} <span class="text-xs">(fixed)</span></span></div>`;
+    const draggableRows = orderedKeys.map(key => {
+        const col = ALL_COLS.find(c => c.key === key);
+        if (!col) return '';
+        return `<div class="col-picker-item flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-sm" draggable="true" data-col-key="${key}"><span class="drag-handle text-gray-300 hover:text-gray-600 cursor-grab select-none">⠿</span><label class="flex items-center gap-2 cursor-pointer flex-1"><input type="checkbox" class="col-checkbox" value="${key}" ${visibleCols.has(key) ? 'checked' : ''}>${col.label}</label></div>`;
+    }).join('');
+    list.innerHTML = `<div class="border-b">${fixedRow('Full Name')}</div>` + draggableRows;
+    list.querySelectorAll('.col-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => { const cur = loadVisibleCols(); cb.checked ? cur.add(cb.value) : cur.delete(cb.value); saveVisibleCols(cur); applyColumns(cur); });
+    });
+    initPickerDrag();
+}
+let pickerDragSrc = null;
+function initPickerDrag() {
+    const list = document.getElementById('col-picker-list');
+    list.querySelectorAll('.col-picker-item').forEach(item => {
+        item.addEventListener('dragstart', e => { pickerDragSrc = item; e.dataTransfer.effectAllowed = 'move'; setTimeout(() => item.classList.add('opacity-50'), 0); });
+        item.addEventListener('dragend', () => { item.classList.remove('opacity-50'); list.querySelectorAll('.col-picker-item').forEach(i => i.classList.remove('picker-drag-over')); });
+        item.addEventListener('dragover', e => { e.preventDefault(); list.querySelectorAll('.col-picker-item').forEach(i => i.classList.remove('picker-drag-over')); item.classList.add('picker-drag-over'); });
+        item.addEventListener('dragleave', () => item.classList.remove('picker-drag-over'));
+        item.addEventListener('drop', e => {
+            e.preventDefault(); item.classList.remove('picker-drag-over');
+            if (!pickerDragSrc || pickerDragSrc === item) return;
+            const items = Array.from(list.querySelectorAll('.col-picker-item'));
+            if (items.indexOf(pickerDragSrc) < items.indexOf(item)) list.insertBefore(pickerDragSrc, item.nextSibling);
+            else list.insertBefore(pickerDragSrc, item);
+            const newOrder = ['name', ...Array.from(list.querySelectorAll('.col-picker-item')).map(i => i.getAttribute('data-col-key')), 'actions'];
+            saveColOrder(newOrder); applyColOrder(newOrder); pickerDragSrc = null;
+        });
+    });
+}
+const initColOrder    = loadColOrder();
+const initVisibleCols = loadVisibleCols();
+applyColOrder(initColOrder);
+applyColumns(initVisibleCols);
+buildColPickerUI(initVisibleCols, initColOrder);
+
+document.getElementById('col-picker-btn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('col-picker-panel').classList.toggle('hidden'); });
+document.addEventListener('click', e => { if (!document.getElementById('col-picker-wrapper').contains(e.target)) document.getElementById('col-picker-panel').classList.add('hidden'); });
+document.getElementById('col-picker-reset').addEventListener('click', () => {
+    saveVisibleCols(DEFAULT_VISIBLE); saveColOrder([...DEFAULT_ORDER]);
+    applyColOrder(DEFAULT_ORDER); applyColumns(DEFAULT_VISIBLE);
+    buildColPickerUI(DEFAULT_VISIBLE, [...DEFAULT_ORDER]);
+});
+
+// ── Column sorting ───────────────────────────────────────────────────
+const SORT_DATE_COLS = new Set(['date_entered', 'date_joined', 'contract_date']);
+let sortCol = null, sortAsc = true;
+function parseSortVal(text, colKey) {
+    text = text.trim();
+    if (text === '—' || text === '') return null;
+    if (SORT_DATE_COLS.has(colKey)) { const p = text.split('/'); if (p.length === 3) return `${p[2]}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`; }
+    if (colKey === 'staff_id') { const n = parseFloat(text); return isNaN(n) ? text.toLowerCase() : n; }
+    return text.toLowerCase();
+}
+function sortTable(colKey) {
+    if (sortCol === colKey) sortAsc = !sortAsc; else { sortCol = colKey; sortAsc = true; }
+    document.querySelectorAll('.employee-table-header-cell').forEach(th => {
+        const ind = th.querySelector('.sort-indicator');
+        if (ind) ind.innerHTML = th.getAttribute('data-col') === colKey
+            ? (sortAsc ? '<span style="color:#039ed9;font-size:0.7rem">↑</span>' : '<span style="color:#039ed9;font-size:0.7rem">↓</span>')
+            : '<span style="color:#bbb;font-size:0.7rem">↕</span>';
+    });
+    const tbody = document.querySelector('.employee-table tbody');
+    Array.from(tbody.querySelectorAll('.employee-table-row')).sort((a, b) => {
+        const ca = a.querySelector(`[data-col="${colKey}"]`), cb = b.querySelector(`[data-col="${colKey}"]`);
+        const va = parseSortVal(ca ? ca.textContent : '', colKey), vb = parseSortVal(cb ? cb.textContent : '', colKey);
+        if (va === null && vb !== null) return sortAsc ? 1 : -1;
+        if (vb === null && va !== null) return sortAsc ? -1 : 1;
+        if (va === null && vb === null) return 0;
+        return va < vb ? (sortAsc ? -1 : 1) : va > vb ? (sortAsc ? 1 : -1) : 0;
+    }).forEach(row => tbody.appendChild(row));
+}
+document.querySelectorAll('.employee-table-header-cell').forEach(th => {
+    if (th.getAttribute('data-col') === 'actions') return;
+    th.style.cursor = 'pointer'; th.style.userSelect = 'none';
+    const ind = document.createElement('span');
+    ind.className = 'sort-indicator ml-1';
+    ind.innerHTML = '<span style="color:#bbb;font-size:0.7rem">↕</span>';
+    th.appendChild(ind);
+    th.addEventListener('click', () => sortTable(th.getAttribute('data-col')));
+});
+
+// ── Tab toggle ───────────────────────────────────────────────────────
+let mapInitialized = false;
+document.getElementById('tab-list').addEventListener('click', () => {
+    document.getElementById('list-view').style.display = '';
+    document.getElementById('list-filters').style.display = '';
+    document.getElementById('list-actions').style.display = '';
+    document.getElementById('map-view').style.display = 'none';
+    document.getElementById('tab-list').classList.replace('bg-[#d3e0ea]','bg-[#093d51]');
+    document.getElementById('tab-list').classList.replace('text-[#093d51]','text-white');
+    document.getElementById('tab-map').classList.replace('bg-[#093d51]','bg-[#d3e0ea]');
+    document.getElementById('tab-map').classList.replace('text-white','text-[#093d51]');
+});
+document.getElementById('tab-map').addEventListener('click', () => {
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('list-filters').style.display = 'none';
+    document.getElementById('list-actions').style.display = 'none';
+    document.getElementById('map-view').style.display = '';
+    document.getElementById('tab-map').classList.replace('bg-[#d3e0ea]','bg-[#093d51]');
+    document.getElementById('tab-map').classList.replace('text-[#093d51]','text-white');
+    document.getElementById('tab-list').classList.replace('bg-[#093d51]','bg-[#d3e0ea]');
+    document.getElementById('tab-list').classList.replace('text-white','text-[#093d51]');
+    if (!mapInitialized) {
+        mapInitialized = true;
+        const script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initMap';
+        script.async = true; script.defer = true;
+        document.head.appendChild(script);
+    }
+});
+
+// ── Map logic ────────────────────────────────────────────────────────
+let allContractors = [], mapMarkers = [], infoWindow, map, centerMarker = null, centerLatLng = null, connectionLine = null, activeMapStatus = 'active';
+function haversineMiles(lat1,lng1,lat2,lng2) {
+    const R=3958.8, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function markerColor(status) { return status==='active'||status==='vetted' ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'; }
+function renderMapList(visible) {
+    const list = document.getElementById('map-contractor-list');
+    const label = activeMapStatus==='all' ? '' : activeMapStatus+' ';
+    document.getElementById('map-result-count').textContent = centerLatLng ? `Top ${visible.length} closest ${label}contractor${visible.length!==1?'s':''}` : `${visible.length} ${label}contractor${visible.length!==1?'s':''}`;
+    if (!visible.length) { list.innerHTML='<p class="map-no-results">No contractors with location data found.</p>'; return; }
+    list.innerHTML = visible.map(c=>`<div class="map-contractor-card ${c.status}-status" data-id="${c.id}"><span class="c-dist">${c.dist!==undefined?c.dist.toFixed(1)+' mi':''}</span><div class="c-name">${c.name}</div><div class="c-meta">${c.city}, ${c.state}</div>${c.department?`<div class="c-meta">${c.department}</div>`:''}</div>`).join('');
+    list.querySelectorAll('.map-contractor-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const found = visible.find(c=>c.id===parseInt(card.dataset.id));
+            if (!found) return;
+            if (connectionLine) { connectionLine.setMap(null); connectionLine=null; }
+            const cll = { lat: found.lat, lng: found.lng };
+            if (centerLatLng) {
+                connectionLine = new google.maps.Polyline({ path:[centerLatLng,cll], geodesic:true, strokeColor:'#039ed9', strokeOpacity:0.85, strokeWeight:2.5, map });
+                const bounds=new google.maps.LatLngBounds(); bounds.extend(centerLatLng); bounds.extend(cll);
+                map.fitBounds(bounds,{top:60,right:60,bottom:60,left:60});
+            } else { map.panTo(cll); map.setZoom(13); }
+            const marker=mapMarkers.find(m=>m._contractorId===found.id);
+            if (marker) google.maps.event.trigger(marker,'click');
+        });
+    });
+}
+function renderMapMarkers(visible) {
+    mapMarkers.forEach(m=>m.setMap(null)); mapMarkers=[];
+    visible.forEach(c => {
+        const marker=new google.maps.Marker({position:{lat:c.lat,lng:c.lng},map,title:c.name,icon:markerColor(c.status)});
+        marker._contractorId=c.id;
+        marker.addListener('click',()=>{ infoWindow.setContent(`<div style="font-family:sans-serif;font-size:13px;min-width:180px;line-height:1.6"><strong>${c.name}</strong><br><span style="color:#555">${c.status_display}</span><br>${c.department?`<span style="color:#555">${c.department}</span><br>`:''}<span style="color:#555">${c.address}</span><br>${c.dist!==undefined?`<span style="color:#039ed9;font-weight:600">${c.dist.toFixed(1)} mi away</span><br>`:''}<a href="${c.detail_url}" style="color:#039ed9;font-weight:600">View Full Profile →</a></div>`); infoWindow.open(map,marker); });
+        mapMarkers.push(marker);
+    });
+}
+function applyMapFilters() {
+    let visible=allContractors.filter(c=>activeMapStatus==='all'||c.status===activeMapStatus);
+    if (centerLatLng) visible=visible.map(c=>({...c,dist:haversineMiles(centerLatLng.lat(),centerLatLng.lng(),c.lat,c.lng)})).sort((a,b)=>a.dist-b.dist).slice(0,10);
+    renderMapMarkers(visible); renderMapList(visible);
+}
+async function initMap() {
+    map=new google.maps.Map(document.getElementById('map'),{center:{lat:33.5,lng:-92},zoom:5});
+    infoWindow=new google.maps.InfoWindow();
+    const autocomplete=new google.maps.places.Autocomplete(document.getElementById('map-search-input'),{types:['geocode']});
+    autocomplete.addListener('place_changed',()=>{
+        const place=autocomplete.getPlace(); if(!place.geometry) return;
+        centerLatLng=place.geometry.location; map.panTo(centerLatLng); map.setZoom(8);
+        if(centerMarker) centerMarker.setMap(null);
+        centerMarker=new google.maps.Marker({position:centerLatLng,map,title:'Project area',icon:'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'});
+        applyMapFilters();
+    });
+    const resp=await fetch("{% url 'contractor_map_data' %}");
+    const data=await resp.json();
+    allContractors=data.contractors;
+    function resetMapView() {
+        document.getElementById('map-search-input').value=''; centerLatLng=null;
+        if(centerMarker){centerMarker.setMap(null);centerMarker=null;}
+        if(connectionLine){connectionLine.setMap(null);connectionLine=null;}
+        map.setCenter({lat:33.5,lng:-92}); map.setZoom(5); applyMapFilters();
+    }
+    document.getElementById('map-clear').addEventListener('click',resetMapView);
+    document.getElementById('map-reset-btn').addEventListener('click',resetMapView);
+    document.querySelectorAll('.map-status-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{ activeMapStatus=btn.dataset.status; document.querySelectorAll('.map-status-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); applyMapFilters(); });
+    });
+    applyMapFilters();
+}
+</script>
+
+{% endblock %}

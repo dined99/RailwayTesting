@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-semibold text-[#093d51]">{{ contractor.first_name }} {{ contractor.last_name }}</h2>
+        <a href="{% url 'contractors' %}" class="text-[#039ed9] hover:underline text-sm">← Back to Contractors</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">Personal Info</h3>
+            <dl class="space-y-2 text-sm">
+                <div><dt class="inline font-medium text-[#093d51]">Status: </dt><dd class="inline">{{ contractor.get_status_display }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Employee Type: </dt><dd class="inline">{{ contractor.get_employee_type_display }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Department: </dt><dd class="inline">{{ contractor.rpr_department.name|default:"—" }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Personal Email: </dt><dd class="inline">{{ contractor.personal_email }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Business Email: </dt><dd class="inline">{{ contractor.business_email }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Phone: </dt><dd class="inline">{{ contractor.phone_number }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Address: </dt><dd class="inline">{{ contractor.street }}, {{ contractor.city }}, {{ contractor.state }} {{ contractor.zip_code }}</dd></div>
+            </dl>
+        </div>
+
+        <div>
+            <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">Contract Info</h3>
+            <dl class="space-y-2 text-sm">
+                <div><dt class="inline font-medium text-[#093d51]">Contract Status: </dt><dd class="inline">{{ contractor.get_contract_status_display }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Contract Date: </dt><dd class="inline">{{ contractor.rpr_contract_date|date:"m/d/Y"|default:"—" }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Date Entered: </dt><dd class="inline">{{ contractor.date_entered|date:"m/d/Y" }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Date Joined: </dt><dd class="inline">{{ contractor.date_of_joining|date:"m/d/Y"|default:"—" }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">Business Name: </dt><dd class="inline">{{ contractor.contractor_business_name|default:"—" }}</dd></div>
+                <div><dt class="inline font-medium text-[#093d51]">RPR Manager: </dt><dd class="inline">{{ contractor.rpr_manager|default:"—" }}</dd></div>
+            </dl>
+        </div>
+    </div>
+
+    {% if pay_rates %}
+    <div class="mt-6">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">Pay Rates</h3>
+        <table class="employee-table text-sm">
+            <thead><tr class="employee-table-header">
+                <th class="employee-table-header-cell">Rate</th>
+                <th class="employee-table-header-cell">Effective Date</th>
+                <th class="employee-table-header-cell">End Date</th>
+            </tr></thead>
+            <tbody>
+                {% for rate in pay_rates %}
+                <tr class="employee-table-row">
+                    <td class="employee-table-cell">${{ rate.rate }}</td>
+                    <td class="employee-table-cell">{{ rate.effective_date|date:"m/d/Y" }}</td>
+                    <td class="employee-table-cell">{{ rate.end_date|date:"m/d/Y"|default:"Current" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if assignments %}
+    <div class="mt-6">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">Assignments</h3>
+        <table class="employee-table text-sm">
+            <thead><tr class="employee-table-header">
+                <th class="employee-table-header-cell">Project</th>
+                <th class="employee-table-header-cell">Client</th>
+                <th class="employee-table-header-cell">Title</th>
+            </tr></thead>
+            <tbody>
+                {% for assignment in assignments %}
+                <tr class="employee-table-row">
+                    <td class="employee-table-cell">{{ assignment.project.name|default:"—" }}</td>
+                    <td class="employee-table-cell">{{ assignment.project.client.name|default:"—" }}</td>
+                    <td class="employee-table-cell">{{ assignment.title_from_client|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

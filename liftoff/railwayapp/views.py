@@ -1,6 +1,5 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.core.paginator import Paginator
 from django.conf import settings
 from .models import StaffMember, Department
 
@@ -10,9 +9,6 @@ def contractors(request):
         employee_type='contractor'
     ).prefetch_related('assignments__project__client').order_by('first_name', 'last_name')
 
-    paginator = Paginator(qs, 50)
-    page = paginator.get_page(request.GET.get('page'))
-
     business_names = StaffMember.objects.filter(
         employee_type='contractor',
         contractor_business_name__isnull=False
@@ -21,7 +17,7 @@ def contractors(request):
     departments = Department.objects.all().values_list('name', flat=True).order_by('name')
 
     context = {
-        'contractors': page,
+        'contractors': qs,
         'business_names': business_names,
         'departments': departments,
         'google_maps_api_key': getattr(settings, 'GOOGLE_MAPS_API_KEY', ''),

@@ -163,29 +163,7 @@
             </table>
         </div>
 
-        {# ── Pagination ── #}
-        {% if contractors.has_other_pages %}
-        <div class="flex items-center justify-between mt-4 text-sm text-gray-600">
-            <span>Page {{ contractors.number }} of {{ contractors.paginator.num_pages }} &mdash; {{ contractors.paginator.count }} contractors</span>
-            <div class="flex gap-1">
-                {% if contractors.has_previous %}
-                    <a href="?page=1" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">«</a>
-                    <a href="?page={{ contractors.previous_page_number }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">‹</a>
-                {% endif %}
-                {% for num in contractors.paginator.page_range %}
-                    {% if contractors.number == num %}
-                        <span class="px-3 py-1 rounded bg-[#093d51] text-white">{{ num }}</span>
-                    {% elif num > contractors.number|add:'-3' and num < contractors.number|add:'3' %}
-                        <a href="?page={{ num }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">{{ num }}</a>
-                    {% endif %}
-                {% endfor %}
-                {% if contractors.has_next %}
-                    <a href="?page={{ contractors.next_page_number }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">›</a>
-                    <a href="?page={{ contractors.paginator.num_pages }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">»</a>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
+
     </div>
 
     {# ── Map view ── #}

@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.conf import settings
+from django.db import IntegrityError
 from .models import StaffMember, Department
 
 
@@ -14,7 +15,7 @@ def contractors(request):
         contractor_business_name__isnull=False
     ).exclude(contractor_business_name='').values_list('contractor_business_name', flat=True).distinct()
 
-    departments = Department.objects.all().values_list('name', flat=True).order_by('name')
+    departments = Department.objects.all().order_by('name')
 
     context = {
         'contractors': qs,
@@ -53,3 +54,33 @@ def contractor_map_data(request):
         for c in contractors
     ]
     return JsonResponse({'contractors': data})
+
+
+def add_contractor(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    try:
+        dept_id = request.POST.get('rpr_department') or None
+        dept = Department.objects.get(pk=dept_id) if dept_id else None
+        contractor = StaffMember.objects.create(
+            first_name=request.POST['first_name'],
+            last_name=request.POST['last_name'],
+            personal_email=request.POST['personal_email'],
+            phone_number=request.POST['phone_number'],
+            street=request.POST['street'],
+            city=request.POST['city'],
+            state=request.POST['state'],
+            zip_code=request.POST['zip_code'],
+            title=request.POST.get('title') or None,
+            status=request.POST.get('status', 'active'),
+            employee_type='contractor',
+            contractor_business_name=request.POST.get('contractor_business_name') or None,
+            rpr_department=dept,
+            date_of_joining=request.POST.get('date_of_joining') or None,
+            contract_status=request.POST.get('contract_status', 'active'),
+        )
+        return JsonResponse({'success': True, 'id': contractor.staff_id})
+    except IntegrityError:
+        return JsonResponse({'success': False, 'error': 'A contractor with that email already exists.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)

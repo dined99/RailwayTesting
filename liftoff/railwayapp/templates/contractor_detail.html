@@ -56,6 +56,48 @@
     </div>
     {% endif %}
 
+    {# ── Documents ── #}
+    <div class="mt-6">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-semibold text-gray-500 uppercase">Documents</h3>
+            <label class="btn bg-[#039ed9] text-white px-3 py-1.5 rounded text-sm hover:bg-[#0287b8] transition-colors cursor-pointer flex items-center gap-2">
+                <i class="fas fa-upload text-xs"></i> Upload File
+                <input type="file" id="file-upload-input" class="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt">
+            </label>
+        </div>
+        <div id="upload-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2 mb-3"></div>
+        <div id="upload-progress" class="hidden text-sm text-[#039ed9] mb-3">Uploading...</div>
+
+        {% if files %}
+        <table class="employee-table text-sm w-full">
+            <thead><tr class="employee-table-header">
+                <th class="employee-table-header-cell text-left px-4 py-2">File Name</th>
+                <th class="employee-table-header-cell text-left px-4 py-2">Type</th>
+                <th class="employee-table-header-cell text-left px-4 py-2">Size</th>
+                <th class="employee-table-header-cell text-left px-4 py-2">Uploaded</th>
+                <th class="employee-table-header-cell text-left px-4 py-2"></th>
+            </tr></thead>
+            <tbody id="files-tbody">
+                {% for file in files %}
+                <tr class="employee-table-row" id="file-row-{{ file.id }}">
+                    <td class="employee-table-cell px-4 py-2">
+                        <a href="{% url 'download_contractor_file' file.id %}" target="_blank" class="text-[#039ed9] hover:underline">{{ file.original_name }}</a>
+                    </td>
+                    <td class="employee-table-cell px-4 py-2">{{ file.content_type }}</td>
+                    <td class="employee-table-cell px-4 py-2">{{ file.file_size|filesizeformat }}</td>
+                    <td class="employee-table-cell px-4 py-2">{{ file.uploaded_at|date:"m/d/Y g:i A" }}</td>
+                    <td class="employee-table-cell px-4 py-2">
+                        <button class="delete-file-btn text-red-500 hover:text-red-700 text-xs font-medium" data-file-id="{{ file.id }}">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p id="no-files-msg" class="text-sm text-gray-400">No documents uploaded yet.</p>
+        {% endif %}
+    </div>
+
     {% if assignments %}
     <div class="mt-6">
         <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">Assignments</h3>
@@ -78,4 +120,70 @@
     </div>
     {% endif %}
 </div>
+<script>
+const uploadInput = document.getElementById('file-upload-input');
+const uploadError = document.getElementById('upload-error');
+const uploadProgress = document.getElementById('upload-progress');
+
+uploadInput.addEventListener('change', async function() {
+    if (!this.files.length) return;
+    const file = this.files[0];
+    uploadError.classList.add('hidden');
+    uploadProgress.classList.remove('hidden');
+
+    const data = new FormData();
+    data.append('file', file);
+    data.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    try {
+        const resp = await fetch("{% url 'upload_contractor_file' contractor.staff_id %}", { method: 'POST', body: data });
+        const json = await resp.json();
+        if (json.success) {
+            window.location.reload();
+        } else {
+            uploadError.textContent = json.error || 'Upload failed.';
+            uploadError.classList.remove('hidden');
+        }
+    } catch {
+        uploadError.textContent = 'Network error. Please try again.';
+        uploadError.classList.remove('hidden');
+    } finally {
+        uploadProgress.classList.add('hidden');
+        this.value = '';
+    }
+});
+
+document.querySelectorAll('.delete-file-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm(`Delete "${this.closest('tr').querySelector('a').textContent}"?`)) return;
+        const fileId = this.dataset.fileId;
+        try {
+            const resp = await fetch(`/contractors/files/${fileId}/delete/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'},
+            });
+            const json = await resp.json();
+            if (json.success) {
+                const row = document.getElementById(`file-row-${fileId}`);
+                row.remove();
+                if (!document.querySelectorAll('.employee-table-row').length) {
+                    document.querySelector('table')?.remove();
+                    const msg = document.getElementById('no-files-msg');
+                    if (msg) msg.classList.remove('hidden');
+                    else {
+                        const p = document.createElement('p');
+                        p.id = 'no-files-msg';
+                        p.className = 'text-sm text-gray-400';
+                        p.textContent = 'No documents uploaded yet.';
+                        document.getElementById('files-tbody')?.closest('.mt-6').appendChild(p);
+                    }
+                }
+            }
+        } catch {
+            alert('Delete failed. Please try again.');
+        }
+    });
+});
+</script>
+
 {% endblock %}

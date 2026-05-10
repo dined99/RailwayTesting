@@ -132,7 +132,7 @@
                             data-date-joined="{{ contractor.date_of_joining|date:'Y-m-d' }}"
                             data-department="{{ contractor.rpr_department.name|default:''|lower }}"
                             data-business="{{ contractor.contractor_business_name|default:''|lower }}">
-                            <td class="employee-table-cell" data-col="name">{{ contractor.first_name }} {{ contractor.last_name }}</td>
+                            <td class="employee-table-cell" data-col="name"><a href="{% url 'contractor_detail' contractor.staff_id %}" class="text-[#039ed9] hover:underline">{{ contractor.first_name }} {{ contractor.last_name }}</a></td>
                             <td class="employee-table-cell" data-col="email">{{ contractor.personal_email }}</td>
                             <td class="employee-table-cell" data-col="phone">{{ contractor.phone_number }}</td>
                             <td class="employee-table-cell" data-col="department">{{ contractor.rpr_department.name|default:"—" }}</td>

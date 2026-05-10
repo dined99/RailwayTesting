@@ -162,3 +162,19 @@ class Assignment(models.Model):
 
     class Meta:
         db_table = "Assignment"
+
+
+class ContractorFile(models.Model):
+    staff_member = models.ForeignKey(StaffMember, on_delete=models.CASCADE, related_name='files')
+    original_name = models.CharField(max_length=255)
+    object_key = models.CharField(max_length=500, unique=True)
+    content_type = models.CharField(max_length=100)
+    file_size = models.PositiveIntegerField()
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'ContractorFile'
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return self.original_name
